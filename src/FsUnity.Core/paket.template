@@ -1,0 +1,23 @@
+type project
+owners
+    Jared Hester
+authors 
+    Jared Hester
+projectUrl
+    http://github.com/FsUnity/FsUnity.Core
+iconUrl
+    https://raw.githubusercontent.com/FsUnity/FsUnity.Core/master/docs/files/img/logo.png
+licenseUrl
+    http://github.com/FsUnity/FsUnity.Core/blob/master/LICENSE.txt
+requireLicenseAcceptance
+    false
+copyright
+    Copyright 2015
+tags
+    F# FSharp Unity3d
+summary
+    Backport of FSharp.Core for compatibility with Unity3d Game Engine
+description
+    Backport of FSharp.Core for compatibility with Unity3d Game Engine
+
+
