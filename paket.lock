@@ -19,6 +19,7 @@ NUGET
     Octokit (0.14.0)
       Microsoft.Net.Http
     SourceLink.Fake (1.0.0)
+    TaskParallelLibrary (1.0.2856.0)
 GITHUB
   remote: fsharp/FAKE
   specs:
