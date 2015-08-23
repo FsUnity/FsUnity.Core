@@ -4,11 +4,11 @@ owners
 authors 
     Jared Hester
 projectUrl
-    http://github.com/FsUnity/FsUnity.Core
+    http://github.com/FsUnity/FsUnity
 iconUrl
-    https://raw.githubusercontent.com/FsUnity/FsUnity.Core/master/docs/files/img/logo.png
+    https://raw.githubusercontent.com/FsUnity/FsUnity/master/docs/files/img/logo.png
 licenseUrl
-    http://github.com/FsUnity/FsUnity.Core/blob/master/LICENSE.txt
+    http://github.com/FsUnity/FsUnity/blob/master/LICENSE.txt
 requireLicenseAcceptance
     false
 copyright

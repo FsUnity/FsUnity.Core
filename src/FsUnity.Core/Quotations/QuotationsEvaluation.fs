@@ -1,7 +1,7 @@
 ﻿// First version copied from the F# Power Pack 
 // https://raw.github.com/fsharp/powerpack/master/src/FSharp.PowerPack.Linq/Linq.fs
 
-namespace FsUnity.Core
+namespace FsUnity
 
 #nowarn "1204"
 
