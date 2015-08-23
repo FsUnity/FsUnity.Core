@@ -534,3 +534,45 @@ let findKeys (predicate : 'Key -> 'T -> bool) (map : Map<'Key, 'T>) : Set<'Key> 
             if predicate.Invoke (key, value) then
                 Set.add key resultKeys
             else resultKeys)
+
+let spanWithKey pred map =
+        map
+        |> Map.fold (fun (l,r) k v ->
+            match k,v with
+            | (key, value) when pred key -> (l, r |> Map.add key value)
+            | (key, value) when not (pred key) -> (l |> Map.add key value, r)
+            | _ -> failwith "Unrecognized pattern"
+        ) (Map.empty, Map.empty)
+
+let splitWithKey pred d = spanWithKey (not << pred) d
+
+/// <summary>
+/// <code>insertWith f key value mp</code> will insert the pair <code>(key, value)</code> into <code>mp</code> if <code>key</code> does not exist in the map. 
+/// If the key does exist, the function will insert <code>f new_value old_value</code>.
+/// </summary>
+let insertWith f key value map =
+    match Map.tryFind key map with
+    | Some oldValue -> map |> Map.add key (f value oldValue)
+    | None -> map |> Map.add key value
+
+/// <summary>
+/// <code>update f k map</code> updates the value <code>x</code> at key <code>k</code> (if it is in the map). 
+/// If <code>f x</code> is <code>None</code>, the element is deleted. 
+/// If it is <code>Some y</code>, the key is bound to the new value <code>y</code>.
+/// </summary>
+let updateWith f key map =
+    let inner v map =
+        match f v with
+        | Some value -> map |> Map.add key value
+        | None -> map |> Map.remove key
+    match Map.tryFind key map with
+    | Some v -> inner v map
+    | None -> map
+
+let valueList map = map |> Map.toList |> List.unzip |> snd
+
+
+/// Allows to remove many keys from a Map
+let removeMany (keys : seq<'T>) (map : Map<'T,'b>) =
+    Seq.fold (fun s key -> Map.remove key s) map keys
+

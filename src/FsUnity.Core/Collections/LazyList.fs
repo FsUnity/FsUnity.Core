@@ -37,13 +37,11 @@ type internal LazyCellStatus<'T> =
     | Delayed of (unit -> LazyListCell<'T>)
     //
     | Value of LazyListCell<'T>
-#if FX_ATLEAST_45
-    //
+    #if FX_ATLEAST_45
     | Exception of ExceptionDispatchInfo
-#else
-    //
+    #else
     | Exception of exn
-#endif
+    #endif
 
 /// <summary>A lazy-list cell.</summary>
 /// <typeparam name="T">The type of elements in the list.</typeparam>
@@ -305,6 +303,18 @@ module LazyList =
     let empty<'T> : LazyList<'T> =
         LazyList<'T>.Empty
     
+
+  //  let force (x: LazyList<'T>) = x.Value
+
+
+//    let getCell (x : LazyList<'T>) = force x 
+
+
+
+   // let (|Cons|Nil|) l = match getCell l with Cons(a,b) -> Cons(a,b) | Empty -> Nil
+
+
+
     /// <summary>Get the first cell of the list.</summary>
     /// <param name="list"></param>
     /// <returns></returns>

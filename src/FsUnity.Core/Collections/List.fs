@@ -26,6 +26,99 @@ open OptimizedClosures
 open FsUnity
 
 
+
+module List =
+    /// Curried cons
+    let inline cons hd tl = hd::tl
+  
+    let inline singleton x = [x]
+
+    let inline lift2 f (l1: _ list) (l2: _ list) = 
+        [ for i in l1 do
+            for j in l2 do
+                yield f i j ]
+
+  
+    let span pred l =
+        let rec loop l cont =
+            match l with
+            | [] -> ([],[])
+            | x::[] when pred x -> (cont l, [])
+            | x::xs when not (pred x) -> (cont [], l)
+            | x::xs when pred x -> loop xs (fun rest -> cont (x::rest))
+            | _ -> failwith "Unrecognized pattern"
+        loop l id
+  
+    let split pred l = span (not << pred) l
+  
+    let skipWhile pred l = span pred l |> snd
+    let skipUntil pred l = split pred l |> snd
+    let takeWhile pred l = span pred l |> fst
+    let takeUntil pred l = split pred l |> fst
+    
+    let splitAt n l =
+        let pred i = i >= n
+        let rec loop i l cont =
+            match l with
+            | [] -> ([],[])
+            | x::[] when not (pred i) -> (cont l, [])
+            | x::xs when pred i -> (cont [], l)
+            | x::xs when not (pred i) -> loop (i+1) xs (fun rest -> cont (x::rest))
+            | _ -> failwith "Unrecognized pattern"
+        loop 0 l id
+  
+    let skip n l = splitAt n l |> snd
+    let take n l = splitAt n l |> fst
+
+    let inline mapIf pred f =
+        List.map (fun x -> if pred x then f x else x)
+
+    /// Behaves like a combination of map and fold; 
+    /// it applies a function to each element of a list, 
+    /// passing an accumulating parameter from left to right, 
+    /// and returning a final value of this accumulator together with the new list.
+    let mapAccum f s l =
+        let rec loop s l cont =
+            match l with
+            | [] -> cont (s, [])
+            | x::xs ->
+                let (s, y) = f s x
+                loop s xs (fun (s,ys) -> cont (s, y::ys))
+        loop s l id
+
+    let rec transpose lst =
+        match lst with
+        | (_::_)::_ -> List.map List.head lst :: transpose (List.map List.tail lst)
+        | _         -> []
+
+    /// Merges to sequences using the given function to transform the elements for comparision
+    let rec mergeBy f (a : _ list) (b : _ list) =
+        [
+            match a, b with
+            | h :: t, h' :: t' when f(h) < f(h') ->
+                yield h; yield! mergeBy f t b
+            | h :: t, h' :: t' -> 
+                yield h'; yield! mergeBy f a t'
+            | h :: t, [] -> yield! a
+            | [], h :: t -> yield! b
+            | [], [] -> ()
+        ]
+
+    /// Merges two sequences by the default comparer for 'T
+    let merge a b = mergeBy id a b
+
+    
+    let pad (amt: int) (elem: 'a) (list: 'a list) : 'a list = 
+        if amt >=0 then list @ (List.replicate amt elem)
+        else list
+
+    let fill (total:int) (elem: 'a) (list: 'a list) = 
+        if List.length list >= total then 
+            list
+        else
+            pad (total - List.length list) elem list
+
+
 /// <summary>A curried "cons" operator.</summary>
 /// <param name="list"></param>
 /// <param name="value"></param>

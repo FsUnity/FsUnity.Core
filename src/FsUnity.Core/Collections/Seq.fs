@@ -21,6 +21,8 @@ limitations under the License.
 [<RequireQualifiedAccess; CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module FsUnity.Collections.Seq
 
+open System.Linq
+open System.Collections
 open System.Collections.Generic
 open LanguagePrimitives
 open OptimizedClosures
@@ -349,3 +351,196 @@ let segmentBy (projection : 'T -> 'Key) (source : seq<'T>) : seq<seq<'T>> =
         // Consecutive elements belong to the same sequence if the 'projection' function
         // returns the same key for both of them.
         projection x = projection y)
+
+
+/// <summary>
+/// Adds an index to a sequence
+/// </summary>
+/// <param name="a"></param>
+let inline index a = Seq.mapi (fun a b -> a,b) a
+
+/// <summary>
+/// Returns the first element (with its index) for which the given function returns true.
+/// Return None if no such element exists.
+/// </summary>
+/// <param name="pred">Predicate</param>
+/// <param name="l">Sequence</param>
+let tryFindWithIndex pred l =
+    l |> index |> Seq.tryFind (fun (_,v) -> pred v)
+
+let inline lift2 f l1 l2 = 
+    seq {
+        for i in l1 do
+            for j in l2 do
+                yield f i j }
+    
+/// Will iterate the current sequence until the given predicate is statisfied
+let iterBreak (f:'T -> bool) (seq:seq<_>) = 
+    use en = seq.GetEnumerator() 
+    let mutable run = true
+    while en.MoveNext() && run do
+        run <- f en.Current
+    
+/// The same as Seq.average except will return None if the seq is empty
+let inline tryAverage (seq : seq<(^a)>) : ^a option =
+    use e = seq.GetEnumerator()     
+    let mutable acc = LanguagePrimitives.GenericZero< (^a) >
+    let mutable count = 0
+    while e.MoveNext() do
+        acc <- acc + e.Current
+        count <- count + 1
+    if count = 0 
+    then None
+    else Some(LanguagePrimitives.DivideByInt< (^a) > acc count)
+
+    
+/// Splits a sequences at the given index
+let splitAt n seq = (Seq.take n seq, Seq.skip n seq)
+    
+/// Converts a streamReader into a seq yielding on each line
+let ofStreamReader (streamReader : System.IO.StreamReader) = 
+        seq {  
+            use sr = streamReader
+            while not(sr.EndOfStream) do
+                yield sr.ReadLine()
+            }
+    
+/// Converts a Stream into a sequence of bytes
+let ofStreamByByte (stream: System.IO.Stream) =
+    seq { while stream.Length <> stream.Position do
+            let x = stream.ReadByte()
+            if (int x) < 0 then ()
+            else yield x }
+    
+/// Converts a stream into a seq of byte[] where the array is of the length given
+/// Note: the last chunk maybe less than the given chunk size
+let ofStreamByChunk chunkSize (stream: System.IO.Stream) =
+    let buffer = Array.zeroCreate<byte> chunkSize
+    seq { while stream.Length <> stream.Position do
+            let bytesRead = stream.Read(buffer, 0, chunkSize)
+            if bytesRead = 0 then ()
+            else yield buffer }
+    
+/// Creates a infinite sequences of the given values
+let asCircular values = 
+    let rec next () = 
+        seq {
+            for element in values do
+                yield element
+            yield! next()
+        }
+    next()
+    
+/// Creates a infinite sequences of the given values, executing the given function everytime the given seq is exhausted
+let asCircularOnLoop f values = 
+    let rec next () = 
+        seq {
+            for element in values do
+                yield element
+            f()
+            yield! next()
+        }
+    next()
+
+/// Creates a infinite sequences of the given values returning None everytime the given seq is exhausted
+let asCircularWithBreak values = 
+    let rec next () = 
+        seq {
+            for element in values do
+                yield Some(element)
+            yield None
+            yield! next()
+        }
+    next()
+        
+/// A safe version of seq head
+let tryHead (source : seq<_>) = 
+    use e = source.GetEnumerator()
+    if e.MoveNext()
+    then Some(e.Current)
+    else None //empty list                
+              
+let tail (source : seq<_>) = 
+    seq {
+        use e = source.GetEnumerator()
+        if e.MoveNext()
+        then 
+            while e.MoveNext() do
+                yield e.Current
+        else invalidArg "source" "source sequence cannot be empty"              
+    }
+
+let tailNoFail (source : seq<_>) = 
+    seq {
+        use e = source.GetEnumerator()
+        if e.MoveNext()
+        then 
+            while e.MoveNext() do
+                yield e.Current
+        else ()             
+    }
+
+/// The same as Seq.nth except returns None if the sequence is empty or does not have enough elements
+let tryNth index (source : seq<_>) = 
+        let rec tryNth' index (e : System.Collections.Generic.IEnumerator<'T>) = 
+            if not (e.MoveNext()) then None
+            else if index < 0 then None
+            else if index = 0 then Some(e.Current)
+            else tryNth' (index-1) e
+    
+        use e = source.GetEnumerator()
+        tryNth' index e
+    
+/// The same as Seq.skip except it returns empty if the sequence is empty or does not have enough elements.
+/// Alias for Enumerable.Skip
+let inline skipNoFail count (source: seq<_>) = 
+    Enumerable.Skip(source, count)
+        
+
+/// Contracts a seq selecting every n values
+let rec contract n (source : seq<_>) =
+    seq {
+            let values = source |> skipNoFail (n - 1)
+            match values |> tryNth 0 with
+            | Some(v) -> 
+                yield v
+                yield! contract n (tailNoFail values)
+            | None -> ()
+    }
+
+/// Creates a new collection whose elements are the results of applying the given function to the corresponding pairs of elements from the two sequences. 
+/// Unlike Seq.map2, if one input sequence is shorter than the other then the remaining elements of the longer sequence are not ignored, they are yielded at the end of the resulting sequence.
+let rec combine f (a : seq<_>) (b : seq<_>) =
+    seq {
+        use e = a.GetEnumerator()
+        use e' = b.GetEnumerator()
+        let eNext = ref (e.MoveNext())
+        let eNext' = ref (e'.MoveNext())
+        while !eNext || !eNext' do
+            yield f e.Current e'.Current
+            eNext := e.MoveNext()
+            eNext' := e'.MoveNext()
+    }
+
+/// Replicates each element in the seq n-times
+let grow n = Seq.collect (fun x -> (repeat x) |> Seq.take n)
+
+/// Pages the underlying sequence
+let page page pageSize (source : seq<_>) =
+        source |> skipNoFail (page * pageSize) |> Seq.truncate pageSize
+        
+let prependToAll sep list = 
+    seq{
+        for element in list do
+            yield sep
+            yield element
+    }
+
+let intersperse (sep: 'a) (list: 'a seq) : 'a seq = 
+    seq { 
+        let notFirst = ref false 
+        for element in list do 
+            if !notFirst then yield sep; 
+            yield element; 
+            notFirst := true
+    } 

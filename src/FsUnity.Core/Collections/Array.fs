@@ -28,6 +28,62 @@ open FsUnity
 [<RequireQualifiedAccess; CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module Array =
 
+    let inline nth i arr = Array.get arr i
+    let inline setAt i v arr = Array.set arr i v; arr
+
+    let copyTo sourceStartIndx startIndx source target =
+        let targetLength = (Array.length target)
+        if startIndx < 0 || startIndx > targetLength - 1 then
+            failwith "Start Index outside the bounds of the array"
+
+        let sourceLength = (Array.length source)
+        let elementsToCopy = 
+                    if (targetLength - startIndx - sourceStartIndx) > sourceLength then
+                        sourceLength
+                    else
+                       (targetLength - startIndx - sourceStartIndx)    
+
+        Array.blit source sourceStartIndx target startIndx elementsToCopy
+    
+    let ofTuple (source : obj) : obj array = 
+        Microsoft.FSharp.Reflection.FSharpValue.GetTupleFields source
+
+    let toTuple (source : 'T array) : 't = 
+        let elements = source |> Array.map (fun x -> x :> obj)
+        Microsoft.FSharp.Reflection.FSharpValue.MakeTuple(elements, typeof<'t>) :?> 't
+
+    /// Returns an array of sliding windows of data drawn from the source array.
+    /// Each window contains the n elements surrounding the current element.
+    let centeredWindow n (source: _ []) =    
+        if n < 0 then invalidArg "n" "n must be a positive integer"
+        let lastIndex = source.Length - 1
+    
+        let window i _ =
+            let windowStartIndex = Math.Max(i - n, 0)
+            let windowEndIndex = Math.Min(i + n, lastIndex)
+            let arrSize = windowEndIndex - windowStartIndex + 1
+            let target = Array.zeroCreate arrSize
+            Array.blit source windowStartIndex target 0 arrSize
+            target
+
+        Array.mapi window source
+
+    /// Calculates the central moving average for the array using n elements either side
+    /// of the point where the mean is being calculated.
+    let inline centralMovingAverage n (a:^t []) = 
+        a |> centeredWindow n |> Array.map (Array.average)
+        
+    /// Calculates the central moving average for the array of optional elements using n
+    /// elements either side of the point where the mean is being calculated. If any of
+    /// the optional elements in the averaging window are None then the average itself
+    /// is None.
+    let inline centralMovingAverageOfOption n (a:^t option array) = 
+        a 
+        |> centeredWindow n 
+        |> Array.map (fun window ->
+                        if Array.exists Option.isNone window
+                        then None
+                        else Some(Array.averageBy Option.get window))
 
 
 
