@@ -111,18 +111,6 @@ module Operators =
     let inline (==) (x : 'T) y =
         LanguagePrimitives.PhysicalEquality x y
 
-    /// <summary>Reference (physical) equality.</summary>
-    /// <param name="x">The first parameter.</param>
-    /// <param name="y">The second parameter.</param>
-    /// <returns></returns>
-    [<Obsolete("This operator will be removed in a future release. Use the (==) operator instead.")>]
-    let inline (===) (x : 'T) y =
-        LanguagePrimitives.PhysicalEquality x y
-
-    /// Negated reference/physical-equality operator.
-    [<Obsolete("This operator will be removed in a future release. Use the (===) operator and the 'not' function instead.")>]
-    let inline (!==) (x : 'T) y =
-        not (LanguagePrimitives.PhysicalEquality x y)
 
     /// <summary>The opticons ("optional cons") operator.</summary>
     /// <param name="x"></param>
@@ -153,23 +141,6 @@ module Operators =
     let inline flip f (x : 'T) (y : 'U) : 'V =
         f y x
 
-    /// <summary>Compares two objects for reference equality.</summary>
-    /// <param name="x"></param>
-    /// <param name="y"></param>
-    /// <returns></returns>
-    [<CompiledName("RefEquals")>]
-    [<Obsolete("This function is redundant and will be removed in a future release. Use the (==) operator instead.")>]
-    let inline refEquals<'T, 'U when 'T : not struct and 'U : not struct> (x : 'T) (y : 'U) =
-        System.Object.ReferenceEquals (x, y)
-
-    /// <summary>Determines if a reference is a null reference.</summary>
-    /// <param name="arg"></param>
-    /// <returns></returns>
-    [<CompiledName("IsNull")>]
-    let inline isNull<'T when 'T : not struct> (arg : 'T) =
-        // OPTIMIZE :   Implement with inline IL (ldnull, ldarg.0, ceq). We can't use LanguagePrimitives.PhysicalEquality because it
-        //              requires the 'null' constraint which we don't want to require for this function.
-        System.Object.ReferenceEquals (null, arg)
 
     /// <summary>Not-AND (NAND) of two boolean values.</summary>
     /// <param name="p"></param>
@@ -313,14 +284,6 @@ module Operators =
 
         if mapped_x < mapped_y then mapped_y else mapped_x
 
-    #if PROTO_COMPILER
-(*
-    /// Returns the RuntimeTypeHandle of the specified type.
-    [<RequiresExplicitTypeArguments>]
-    [<CompiledName("TypeHandleOf")>]
-    let inline typehandleof<'T> = (# "ldtoken !0" type('T) : System.RuntimeTypeHandle #)
-*)
-    #endif
 
     (* Exception-related functions *)
     
@@ -387,24 +350,6 @@ module Operators =
                 raise <| System.ArgumentNullException ()
             else
                 raise <| System.ArgumentNullException paramName
-
-    #if PROTO_COMPILER
-    /// <summary>Checks whether a double-precision floating-point value is a
-    /// finite real number and raises an exception if it is not.</summary>
-    /// <param name="value">The value to check.</param>
-    /// <returns>The unmodified input value, if it is a finite real number.</summary>
-    /// <exception cref="T:System.ArithmeticException"><paramref name="value"/> is a <c>NaN</c> or an infinity</exception>
-    [<CompiledName("CheckFiniteDouble")>]
-    let inline ckfinite (x : float) = (# "ckfinite" x : float #)
-
-    /// <summary>Checks whether a single-precision floating-point value is a
-    /// finite real number and raises an exception if it is not.</summary>
-    /// <param name="value">The value to check.</param>
-    /// <returns>The unmodified input value, if it is a finite real number.</summary>
-    /// <exception cref="T:System.ArithmeticException"><paramref name="value"/> is a <c>NaN</c> or an infinity</exception>
-    [<CompiledName("CheckFiniteSingle")>]
-    let inline ckfinitef (x : float32) = (# "ckfinite" x : float32 #)
-    #endif
 
     (* Active Patterns *)
 
@@ -672,8 +617,7 @@ module Lazy =
         // Return the lazy value.
         lazyValue
 
-    #if FX_NO_THREADPOOL
-    #else
+
     /// Callback delegate which forces evaluation of a Lazy<'T>,
     /// then sets a ManualResetEvent to signal the initialization has completed.
     /// Meant to be used with ThreadPool.QueueUserWorkItem.
@@ -695,13 +639,12 @@ module Lazy =
             // operation fails; raising an exception on a ThreadPool thread is generally not a great idea.
             // TODO : We could pass a 'ref' cell into this callback, and use that to pass the .Set() result back.
             initCompleted.Set () |> ignore)
-    #endif
+
 
     (* TODO : The 'tryForce' function could be modified to use the Task API instead of directly
           using the ThreadPool API, which would allow it to be included in portable profile builds.
           It's excluded for now to make it easier to get the portable builds working. *)
-    #if FX_NO_THREADPOOL
-    #else
+
     /// <summary>
     /// Forces evaluation of a lazily-initialized value, if necessary.
     /// If the evaluation is completed within the specified timeout period, returns <c>Some x</c>
@@ -759,7 +702,7 @@ module Lazy =
                     // Get the initialized value and return it.
                     Some lazyValue.Value
                 else None
-    #endif
+
 
 /// Additional functional operators on options.
 [<RequireQualifiedAccess; CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
@@ -1327,8 +1270,7 @@ module Printf =
     let inline dprintfn format : 'T =
         ksprintf Debug.WriteLine format
 
-#if FX_SIMPLE_DIAGNOSTICS
-#else
+
     /// <summary>Print formatted string to Debug listeners.</summary>
     /// <param name="format"></param>
     /// <returns></returns>
@@ -1350,4 +1292,3 @@ module Printf =
     let inline tprintfn format : 'T =
         ksprintf Trace.WriteLine format
 
-#endif

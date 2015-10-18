@@ -303,7 +303,15 @@ module LazyList =
     let empty<'T> : LazyList<'T> =
         LazyList<'T>.Empty
     
-
+//    let lzy f = { status = Delayed f }
+//    let force (x: LazyList<'T>) = x.Value
+//
+//    let notlazy v = { status = Value v }
+//
+//
+//    type EmptyValue<'T>() = 
+//        static let value : LazyList<'T> = notlazy CellEmpty
+//        static member Value : LazyList<'T> = value
   //  let force (x: LazyList<'T>) = x.Value
 
 
@@ -312,6 +320,27 @@ module LazyList =
 
 
    // let (|Cons|Nil|) l = match getCell l with Cons(a,b) -> Cons(a,b) | Empty -> Nil
+
+
+
+       /// <summary>Return a new list which contains the given item followed by the given list.</summary>
+    /// <param name="value"></param>
+    /// <param name="list"></param>
+    /// <returns></returns>
+    [<CompiledName("Cons")>]
+    let cons value (list : LazyList<'T>) =
+        // Preconditions checked by the implementation.
+        LazyList<_>.Cons (value, list)
+
+
+
+    let rec private revAux r acc =
+        match r with
+        | Empty -> acc
+        | Cons(hd, tl) -> revAux tl.Value (cons hd acc)
+
+    let rev (r:LazyList<'T>) =
+        revAux r.Value empty
 
 
 
@@ -358,14 +387,7 @@ module LazyList =
 
         list.IsEmpty
 
-    /// <summary>Return a new list which contains the given item followed by the given list.</summary>
-    /// <param name="value"></param>
-    /// <param name="list"></param>
-    /// <returns></returns>
-    [<CompiledName("Cons")>]
-    let cons value (list : LazyList<'T>) =
-        // Preconditions checked by the implementation.
-        LazyList<_>.Cons (value, list)
+
     
     /// <summary>
     /// Return a new list which on consumption contains the given item followed by the list returned by the given computation.
@@ -871,6 +893,15 @@ module LazyList =
                 | Cons (hd, tl) ->
                     consCell hd (take (count - 1) tl)
 
+
+//    let rec drop n xs =
+//        if n < 0 then invalidArg "n" "n was negative"
+//        elif n > 0 then
+//            match xs with
+//            | Cons(x, xs') -> drop (n-1) xs'
+//            | _ -> Seq.empty
+//        else
+//            xs
 
 type LazyList<'T> with
     /// <summary>Appends the second <see cref="LazyList`1{T}"/> to the end of the first.</summary>
